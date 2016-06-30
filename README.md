@@ -12,8 +12,8 @@ A chat app using Socket.IO. Visitors queue up to chat.
 
 ## Endpoints (/)
 
-/: Visitors enter the queue
-/operator: operator enters to chat with visitors
+* /: Visitors enter the queue
+* /operator: operator enters to chat with visitors
 
 ## Assumptions
 * Only one operator will attempt to log in at any given time.
