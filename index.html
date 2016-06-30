@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <title>Chat With Us</title>
+  <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700italic,700' rel='stylesheet' type='text/css'>
+  <link href='/css/styles.css' rel='stylesheet' type='text/css'>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <header>
+    <h1>Chat for Visitors</h1>
+  </header>
+  <div class="content">
+    <section id="status">
+      <p>
+        <span class="status-item">Operator is:</span>
+        <span id="operator-status">Unavailable</span>
+      </p>
+      <p>
+        <span class="status-item">Your position in queue:</span>
+        <span id="queue-status"></span>
+      </p>
+    </section>
+    <ul id="messages"></ul>
+    <form id="form-join">
+      <h2>Join Chat as a Visitor</h2>
+      <input type="text" placeholder="Your nickname" id="nickname" required>
+      <input type="submit" value="Join Chat">
+    </form>
+    <form id="form-chat">
+      <input type="text" placeholder="Your message" id="message" autocomplete="off">
+      <input type="submit" value="Send" id="message-send">
+    </form>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script>
+
+    var socket = io();
+
+    var messages = $('#messages');
+    var statusPanel = $('#status');
+    var formChat = $('#form-chat');
+    var formJoin = $('#form-join');
+    var message = $('#message');
+    var nickname = $('#nickname');
+    var queueStatus = $('#queue-status');
+
+    // Hide chat window to start and focus on the join form
+    statusPanel.hide();
+    formChat.hide();
+    messages.hide();
+    nickname.focus();
+
+    $("form").submit(function(event) {
+      event.preventDefault();
+    });
+
+    formJoin.submit(function() {
+      var name = nickname.val() || 'guest user';
+      socket.emit('visitor-joined-chat', name);
+      formJoin.detach();
+      statusPanel.show();
+      messages.show();
+      message.focus();
+    });
+
+    formChat.submit(function() {
+      socket.emit('message-to-operator', message.val());
+      // Clear the form
+      message.val('');
+    });
+
+    socket.on('update-visitor-queue', function(position) {
+      queueStatus.text(position);
+    });
+
+    socket.on('update-operator-status', function(isAvailable) {
+      var operatorStatus = (isAvailable === true ? 'Available' : 'Unavailable');
+      $('#operator-status').text(operatorStatus);
+      if (isAvailable) {
+        formChat.show();
+        message.focus();
+      }
+    });
+
+    socket.on('message-to-operator', function(name, message) {
+      messages.append(
+        $('<li>').text(message).prepend($('<span>')
+        .addClass('sender-name').text(name))
+      );
+    });
+
+    socket.on('message-to-visitor', function(name, message) {
+      messages.append(
+        $('<li>').text(message).prepend($('<span>')
+        .addClass('sender-name').text(name))
+      );
+    });
+
+    socket.on('chat-ended', function(message) {
+      messages.append($('<li>').text(message).addClass('session-end'));
+      queueStatus.hide();
+      formChat.hide();
+      socket.disconnect(true);
+    });
+
+    window.onbeforeunload = function () {
+      return "Do you really want to exit the chat?";
+    };
+
+  </script>
+</body>
+</html>

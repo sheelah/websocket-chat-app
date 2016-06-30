@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <title>Chat With Customers</title>
+  <link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700italic,700' rel='stylesheet' type='text/css'>
+  <link href='/css/styles.css' rel='stylesheet' type='text/css'>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <header>
+    <h1>Chat for Operators</h1>
+  </header>
+  <div class="content">
+    <section id="status">
+      <p>
+        <span class="status-item">Visitors Queued:</span>
+        <ul id="visitors-queued"></ul>
+      </p>
+      <p>
+        <span class="status-item">Chatting with:</span>
+        <span id="chatting-with"></span>
+      </p>
+    </section>
+    <ul id="messages"></ul>
+    <form id="form-join" class="operator-join">
+      <h2>Join Chat as Operator</h2>
+      <input type="submit" value="Join Chat">
+    </form>
+    <form id="form-chat">
+      <input type="text" placeholder="Your message" id="message" autocomplete="off">
+      <input type="submit" value="Send" id="message-send">
+    </form>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+  <script>
+
+    var socket = io();
+
+    var messages = $('#messages');
+    var statusPanel = $('#status');
+    var formChat = $('#form-chat');
+    var formJoin = $('#form-join');
+    var message = $('#message');
+    var visitorsQueued = $('#visitors-queued');
+
+    // Hide status, chat form, and messages list at initial load
+    statusPanel.hide();
+    formChat.hide();
+    messages.hide();
+
+
+    $("form").submit(function(event) {
+      event.preventDefault();
+    });
+
+    formJoin.submit(function() {
+      socket.emit('operator-joined-chat', name);
+      formJoin.detach();
+      statusPanel.show();
+      formChat.show();
+      messages.show();
+      message.focus();
+    });
+
+    formChat.submit(function() {
+      socket.emit('message-to-visitor', message.val());
+      // Clear the form
+      message.val('');
+    });
+
+    socket.on('update-visitors-list', function(connections, names) {
+      visitorsQueued.empty();
+      for (var i = 0; i < connections.length; i++) {
+        visitorsQueued.append($('<li>').text(names[connections[i]]));
+      }
+    });
+
+    socket.on('update-chatting-with', function(socketId, names) {
+      var name = names[socketId] || '';
+      $('#chatting-with').text(name);
+      messages.empty();
+    });
+
+    socket.on('message-to-visitor', function(name, message) {
+      messages.append($('<li>').text(message).prepend(
+        $('<span>').addClass('sender-name').text(name))
+      );
+    });
+
+    socket.on('message-to-operator', function(name, message) {
+      messages.append($('<li>').text(message).prepend(
+        $('<span>').addClass('sender-name').text(name))
+      );
+    });
+
+    socket.on('chat-ended', function(name, message) {
+      messages.after($('<li>').text(message).text(name)
+        .addClass('session-end').delay(3000).fadeOut());
+    });
+
+    window.onbeforeunload = function () {
+      return "Do you really want to exit the chat?";
+    };
+
+  </script>
